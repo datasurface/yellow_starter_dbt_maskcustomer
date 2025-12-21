@@ -131,7 +131,6 @@ venv.bak/
 
 # DBT Generated Files
 target/
-models/
 logs/
 
 # Spyder project settings

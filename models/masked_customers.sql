@@ -15,10 +15,10 @@ SELECT
     CONCAT(LEFT(lastname, 1), '***') AS lastname,
     -- Keep dob as-is (or could mask year)
     dob,
-    -- Mask email: show first 2 chars and domain
+    -- Mask email: show first 2 chars and domain (SQL Server compatible)
     CASE
-        WHEN email IS NOT NULL AND POSITION('@' IN email) > 0 THEN
-            CONCAT(LEFT(email, 2), '***@', SPLIT_PART(email, '@', 2))
+        WHEN email IS NOT NULL AND CHARINDEX('@', email) > 0 THEN
+            CONCAT(LEFT(email, 2), '***@', SUBSTRING(email, CHARINDEX('@', email) + 1, LEN(email)))
         ELSE email
     END AS email,
     -- Mask phone: show last 4 digits
@@ -30,4 +30,3 @@ SELECT
     primaryaddressid,
     billingaddressid
 FROM {{ source('workspace_inputs', 'Original_Store1_customers') }}
-
