@@ -1,27 +1,21 @@
 -- Masked Customers Model
--- This dbt model reads from the customers source and masks PII fields
--- Output is written to the DataTransformer output table
+-- INSERT into existing table (created by DataSurface with correct schema)
+-- No materialization - we don't want dbt to DROP/CREATE the table
 
-{{ config(
-    materialized='table',
-    alias=var('output_customers', 'customers')
-) }}
+{% set target_table = var('output_customers') %}
 
+{% call statement('insert_masked_data', fetch_result=False) %}
+INSERT INTO {{ target_table }} (id, firstname, lastname, dob, email, phone, primaryaddressid, billingaddressid)
 SELECT
     id,
-    -- Mask firstname: keep first letter, replace rest with ***
     CONCAT(LEFT(firstname, 1), '***') AS firstname,
-    -- Mask lastname: keep first letter, replace rest with ***
     CONCAT(LEFT(lastname, 1), '***') AS lastname,
-    -- Keep dob as-is (or could mask year)
     dob,
-    -- Mask email: show first 2 chars and domain (SQL Server compatible)
     CASE
         WHEN email IS NOT NULL AND CHARINDEX('@', email) > 0 THEN
             CONCAT(LEFT(email, 2), '***@', SUBSTRING(email, CHARINDEX('@', email) + 1, LEN(email)))
         ELSE email
     END AS email,
-    -- Mask phone: show last 4 digits
     CASE
         WHEN phone IS NOT NULL THEN
             CONCAT('***-***-', RIGHT(phone, 4))
@@ -30,3 +24,7 @@ SELECT
     primaryaddressid,
     billingaddressid
 FROM {{ source('workspace_inputs', 'Original_Store1_customers') }}
+{% endcall %}
+
+-- Ephemeral models need a SELECT statement
+SELECT 1 as dummy
