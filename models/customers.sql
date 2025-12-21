@@ -4,7 +4,7 @@
 
 {{ config(
     materialized='table',
-    alias=var('output_table', 'customers')
+    alias=var('output_customers', 'customers')
 ) }}
 
 SELECT
