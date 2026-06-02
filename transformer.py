@@ -1,8 +1,10 @@
 from typing import List
-from datasurface.md import Dataset, Datastore, DDLColumn, DDLTable, PlainTextDocumentation
-from datasurface.md import NullableStatus, PrimaryKeyStatus, VarChar, Date
-from datasurface.md.policy import SimpleDC, SimpleDCTypes
-from datasurface.md.containers import TestCaptureMetaData
+from datasurface.dsl import Dataset, Datastore
+from datasurface.schema import DDLColumn, DDLTable, NullableStatus, PrimaryKeyStatus
+from datasurface.types import VarChar, Date
+from datasurface.policy import SimpleDC, SimpleDCTypes
+from datasurface.documentation import PlainTextDocumentation
+from datasurface.containers import TestCaptureMetaData
 
 
 def defineInputDatasets() -> List[Datastore]:
