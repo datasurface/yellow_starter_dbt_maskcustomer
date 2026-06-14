@@ -52,7 +52,8 @@ def defineOutputDatastore() -> Datastore:
                         DDLColumn("email", VarChar(100)),
                         DDLColumn("phone", VarChar(100)),
                         DDLColumn("primaryaddressid", VarChar(20)),
-                        DDLColumn("billingaddressid", VarChar(20))
+                        DDLColumn("billingaddressid", VarChar(20)),
+                        DDLColumn("ds_surf_iud", VarChar(1), nullable=NullableStatus.NOT_NULLABLE)
                     ]
                 ),
                 classifications=[SimpleDC(SimpleDCTypes.PUB, "Customer")]
