@@ -55,7 +55,7 @@
 {{ SOPEN }} endif {{ SCLOSE }}
 
 {{ SOPEN }} set insert_sql {{ SCLOSE }}
-INSERT INTO {{ JOPEN }} target_table {{ JCLOSE }} (id, firstname, lastname, dob, email, phone, primaryaddressid, billingaddressid)
+INSERT INTO {{ JOPEN }} target_table {{ JCLOSE }} (id, firstname, lastname, dob, email, phone, primaryaddressid, billingaddressid, ds_surf_iud)
 SELECT
     id,
     CONCAT(LEFT({{ JOPEN }} source_columns.firstname {{ JCLOSE }}, 1), '***') AS firstname,
@@ -64,7 +64,8 @@ SELECT
     {{ JOPEN }} email_mask {{ JCLOSE }} AS email,
     CASE WHEN phone IS NOT NULL THEN CONCAT('***-***-', RIGHT(phone, 4)) ELSE phone END AS phone,
     {{ JOPEN }} source_columns.primaryaddressid {{ JCLOSE }} AS primaryaddressid,
-    {{ JOPEN }} source_columns.billingaddressid {{ JCLOSE }} AS billingaddressid
+    {{ JOPEN }} source_columns.billingaddressid {{ JCLOSE }} AS billingaddressid,
+    'U' AS ds_surf_iud
 FROM {{ JOPEN }} source_table {{ JCLOSE }}
 {{ SOPEN }} endset {{ SCLOSE }}
 
