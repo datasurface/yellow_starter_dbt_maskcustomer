@@ -1,0 +1,65 @@
+-- Masked Customers Model
+-- INSERT into existing table (created by DataSurface with correct schema)
+-- Dialect-aware: works on both PostgreSQL and SQL Server
+
+{% set input_keys = inputs.keys() | list %}
+{% if input_keys | length != 1 %}
+    {% set _ = 1 / 0 %}
+{% endif %}
+{% set source_name = input_keys[0] | replace('#', '_') | replace(':', '_') %}
+{% set JOPEN = '{{' %}
+{% set JCLOSE = '}}' %}
+{% set SOPEN = '{%' %}
+{% set SCLOSE = '%}' %}
+
+{{ JOPEN }} config(materialized='view') {{ JCLOSE }}
+
+{{ SOPEN }} set target_table = var('output_customers') {{ SCLOSE }}
+{{ SOPEN }} set source_table = source('workspace_inputs', '{{ source_name }}') {{ SCLOSE }}
+
+{{ SOPEN }} set source_columns = namespace(
+    firstname='[firstName]' if target.type == 'sqlserver' else '"firstName"',
+    lastname='[lastName]' if target.type == 'sqlserver' else '"lastName"',
+    primaryaddressid='[primaryAddressId]' if target.type == 'sqlserver' else '"primaryAddressId"',
+    billingaddressid='[billingAddressId]' if target.type == 'sqlserver' else '"billingAddressId"'
+) {{ SCLOSE }}
+
+{{ SOPEN }} if execute {{ SCLOSE }}
+    {{ SOPEN }} set source_column_names = adapter.get_columns_in_relation(source_table) | map(attribute='name') | list {{ SCLOSE }}
+    {{ SOPEN }} if 'firstname' in source_column_names {{ SCLOSE }}
+        {{ SOPEN }} set source_columns.firstname = 'firstname' {{ SCLOSE }}
+    {{ SOPEN }} endif {{ SCLOSE }}
+    {{ SOPEN }} if 'lastname' in source_column_names {{ SCLOSE }}
+        {{ SOPEN }} set source_columns.lastname = 'lastname' {{ SCLOSE }}
+    {{ SOPEN }} endif {{ SCLOSE }}
+    {{ SOPEN }} if 'primaryaddressid' in source_column_names {{ SCLOSE }}
+        {{ SOPEN }} set source_columns.primaryaddressid = 'primaryaddressid' {{ SCLOSE }}
+    {{ SOPEN }} endif {{ SCLOSE }}
+    {{ SOPEN }} if 'billingaddressid' in source_column_names {{ SCLOSE }}
+        {{ SOPEN }} set source_columns.billingaddressid = 'billingaddressid' {{ SCLOSE }}
+    {{ SOPEN }} endif {{ SCLOSE }}
+{{ SOPEN }} endif {{ SCLOSE }}
+
+{{ SOPEN }} if target.type == 'sqlserver' {{ SCLOSE }}
+    {{ SOPEN }} set email_mask = "CASE WHEN email IS NOT NULL AND CHARINDEX('@', email) > 0 THEN CONCAT(LEFT(email, 2), '***@', SUBSTRING(email, CHARINDEX('@', email) + 1, LEN(email))) ELSE email END" {{ SCLOSE }}
+{{ SOPEN }} else {{ SCLOSE }}
+    {{ SOPEN }} set email_mask = "CASE WHEN email IS NOT NULL AND POSITION('@' IN email) > 0 THEN CONCAT(LEFT(email, 2), '***@', SPLIT_PART(email, '@', 2)) ELSE email END" {{ SCLOSE }}
+{{ SOPEN }} endif {{ SCLOSE }}
+
+{{ SOPEN }} set insert_sql {{ SCLOSE }}
+INSERT INTO {{ JOPEN }} target_table {{ JCLOSE }} (id, firstname, lastname, dob, email, phone, primaryaddressid, billingaddressid)
+SELECT
+    id,
+    CONCAT(LEFT({{ JOPEN }} source_columns.firstname {{ JCLOSE }}, 1), '***') AS firstname,
+    CONCAT(LEFT({{ JOPEN }} source_columns.lastname {{ JCLOSE }}, 1), '***') AS lastname,
+    dob,
+    {{ JOPEN }} email_mask {{ JCLOSE }} AS email,
+    CASE WHEN phone IS NOT NULL THEN CONCAT('***-***-', RIGHT(phone, 4)) ELSE phone END AS phone,
+    {{ JOPEN }} source_columns.primaryaddressid {{ JCLOSE }} AS primaryaddressid,
+    {{ JOPEN }} source_columns.billingaddressid {{ JCLOSE }} AS billingaddressid
+FROM {{ JOPEN }} source_table {{ JCLOSE }}
+{{ SOPEN }} endset {{ SCLOSE }}
+
+{{ SOPEN }} do run_query(insert_sql) {{ SCLOSE }}
+
+SELECT 1 as dummy
