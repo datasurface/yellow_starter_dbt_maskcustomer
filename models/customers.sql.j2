@@ -6,7 +6,7 @@
 {% if input_keys | length != 1 %}
     {% set _ = 1 / 0 %}
 {% endif %}
-{% set source_name = input_keys[0] | replace('#', '_') | replace(':', '_') %}
+{% set raw_source_table = inputs[input_keys[0]] %}
 {% set JOPEN = '{{' %}
 {% set JCLOSE = '}}' %}
 {% set SOPEN = '{%' %}
@@ -15,7 +15,15 @@
 {{ JOPEN }} config(materialized='view') {{ JCLOSE }}
 
 {{ SOPEN }} set target_table = var('output_customers') {{ SCLOSE }}
-{{ SOPEN }} set source_table = source('workspace_inputs', '{{ source_name }}') {{ SCLOSE }}
+{{ SOPEN }} set raw_source_relation = '{{ raw_source_table }}' {{ SCLOSE }}
+{{ SOPEN }} set source_parts = raw_source_relation.split('.') {{ SCLOSE }}
+{{ SOPEN }} if source_parts | length == 3 {{ SCLOSE }}
+    {{ SOPEN }} set source_table = api.Relation.create(database=source_parts[0], schema=source_parts[1], identifier=source_parts[2]) {{ SCLOSE }}
+{{ SOPEN }} elif source_parts | length == 2 {{ SCLOSE }}
+    {{ SOPEN }} set source_table = api.Relation.create(database=target.database, schema=source_parts[0], identifier=source_parts[1]) {{ SCLOSE }}
+{{ SOPEN }} else {{ SCLOSE }}
+    {{ SOPEN }} set source_table = api.Relation.create(database=target.database, schema=target.schema, identifier=raw_source_relation) {{ SCLOSE }}
+{{ SOPEN }} endif {{ SCLOSE }}
 
 {{ SOPEN }} set source_columns = namespace(
     firstname='[firstName]' if target.type == 'sqlserver' else '"firstName"',
