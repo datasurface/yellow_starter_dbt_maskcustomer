@@ -71,4 +71,13 @@ FROM {{ JOPEN }} source_table {{ JCLOSE }}
 
 {{ SOPEN }} do run_query(insert_sql) {{ SCLOSE }}
 
+{{ SOPEN }} if var('datasurface_reseed_requested', false) {{ SCLOSE }}
+    {{ SOPEN }} set reseed_key = var('datasurface_reseed_declared_state_key') {{ SCLOSE }}
+    {{ SOPEN }} set next_state_table = var('datasurface_next_state_table') {{ SCLOSE }}
+    {{ SOPEN }} set next_state_column = var('datasurface_next_state_column') {{ SCLOSE }}
+    {{ SOPEN }} set next_state_json = tojson({reseed_key: true}) | replace("'", "''") {{ SCLOSE }}
+    {{ SOPEN }} set reseed_state_sql = "INSERT INTO " ~ next_state_table ~ " (" ~ next_state_column ~ ") VALUES ('" ~ next_state_json ~ "')" {{ SCLOSE }}
+    {{ SOPEN }} do run_query(reseed_state_sql) {{ SCLOSE }}
+{{ SOPEN }} endif {{ SCLOSE }}
+
 SELECT 1 as dummy

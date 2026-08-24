@@ -1,5 +1,6 @@
 import unittest
 import os
+from pathlib import Path
 from typing import Any, List, Dict
 from datetime import date
 
@@ -115,6 +116,23 @@ class TestMaskedCustomerGeneratorDBT(BaseDTLocalTest):
         self.assertEqual(len(output), 1)
         masked = output[0]
         self.assertIsNone(masked["email"])
+
+    def test_reseed_declaration_follows_full_image_insert(self) -> None:
+        """A requested reseed is declared only after the complete output query."""
+        template = (Path(__file__).parent / "models" / "customers.sql.j2").read_text(
+            encoding="utf-8"
+        )
+
+        full_image_position = template.index("do run_query(insert_sql)")
+        request_position = template.index("datasurface_reseed_requested")
+        declaration_position = template.index("datasurface_reseed_declared_state_key")
+        state_write_position = template.index("do run_query(reseed_state_sql)")
+
+        self.assertLess(full_image_position, request_position)
+        self.assertLess(request_position, declaration_position)
+        self.assertLess(declaration_position, state_write_position)
+        self.assertIn("datasurface_next_state_table", template)
+        self.assertIn("datasurface_next_state_column", template)
 
 
 if __name__ == "__main__":
