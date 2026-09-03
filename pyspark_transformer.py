@@ -39,5 +39,15 @@ def maskCustomers(customers: Any) -> Any:
 def executeTransformer(spark: Any, context: Any) -> None:
     """Run against the Spark cluster selected by the platform PSP."""
     del spark
-    customers = context.getInputDataFrame("Original", "CustomerDB", "customers")
+    reseed_requested = context.isReseedRequested()
+    if reseed_requested:
+        customers = context.getInputFullDataFrame(
+            "Original", "CustomerDB", "customers"
+        )
+    else:
+        customers = context.getInputDataFrame(
+            "Original", "CustomerDB", "customers"
+        )
     context.writeOutput("customers", maskCustomers(customers))
+    if reseed_requested:
+        context.declareReseed()

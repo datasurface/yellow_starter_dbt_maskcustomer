@@ -74,19 +74,40 @@ class _DataFrame:
 
 
 class _Context:
-    def __init__(self) -> None:
+    def __init__(self, reseed_requested: bool = False) -> None:
         self.input = _DataFrame()
+        self.full_input = _DataFrame()
+        self.reseed_requested = reseed_requested
+        self.reseed_declared = False
+        self.operations: list[str] = []
         self.read: tuple[str, str, str] | None = None
+        self.full_read: tuple[str, str, str] | None = None
         self.written: tuple[str, _DataFrame] | None = None
+
+    def isReseedRequested(self) -> bool:
+        return self.reseed_requested
 
     def getInputDataFrame(
         self, dsg: str, store_name: str, dataset_name: str
     ) -> _DataFrame:
         self.read = (dsg, store_name, dataset_name)
+        self.operations.append("read")
         return self.input
+
+    def getInputFullDataFrame(
+        self, dsg: str, store_name: str, dataset_name: str
+    ) -> _DataFrame:
+        self.full_read = (dsg, store_name, dataset_name)
+        self.operations.append("read-full")
+        return self.full_input
 
     def writeOutput(self, dataset_name: str, dataframe: _DataFrame) -> None:
         self.written = (dataset_name, dataframe)
+        self.operations.append("write")
+
+    def declareReseed(self) -> None:
+        self.reseed_declared = True
+        self.operations.append("declare-reseed")
 
 
 def _install_pyspark_stub() -> None:
@@ -107,6 +128,22 @@ def test_execute_transformer_uses_portable_context_contract() -> None:
 
     assert context.read == ("Original", "CustomerDB", "customers")
     assert context.written == ("customers", context.input)
+    assert context.full_read is None
+    assert context.reseed_declared is False
+    assert context.operations == ["read", "write"]
+
+
+def test_execute_transformer_declares_reseed_after_full_output() -> None:
+    _install_pyspark_stub()
+    context = _Context(reseed_requested=True)
+
+    pyspark_transformer.executeTransformer(object(), context)
+
+    assert context.read is None
+    assert context.full_read == ("Original", "CustomerDB", "customers")
+    assert context.written == ("customers", context.full_input)
+    assert context.reseed_declared is True
+    assert context.operations == ["read-full", "write", "declare-reseed"]
 
 
 def test_mask_customer_projects_iud_shape() -> None:
